@@ -3,3 +3,5 @@ notebooks/gifsplanation/
 build
 xray_tools.egg-info
 .ipynb_checkpoints
+*.png
+*.tar
