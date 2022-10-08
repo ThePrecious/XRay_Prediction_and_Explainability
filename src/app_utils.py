@@ -1,0 +1,108 @@
+import os
+import torch
+import torchxrayvision as xrv
+import torchvision
+import matplotlib.pyplot as plt
+plt.switch_backend('agg')
+import numpy as np
+
+from captum.attr import IntegratedGradients, Saliency, InputXGradient
+from .gifsplanation import attribution
+
+def make_fig(plot_matrix):
+    fig = plt.figure()
+    plt.imshow(plot_matrix, cmap=plt.cm.hot)
+    #plt.title(plot_title)
+    plt.gca().set_axis_off()
+    plt.subplots_adjust(top=1, bottom=0, right=1, left=0, hspace=0, wspace=0)
+    plt.margins(0, 0)
+    plt.gca().xaxis.set_major_locator(plt.NullLocator())
+    plt.gca().yaxis.set_major_locator(plt.NullLocator())
+
+    return fig
+
+
+def xrv_prepare_image(image):
+    img = xrv.datasets.normalize(image, 255)  # convert 8-bit image to [-1024, 1024] range
+    img = img.mean(2)[None, ...]  # Make single color channel
+    transform = torchvision.transforms.Compose(
+        [
+            xrv.datasets.XRayCenterCrop(),
+            xrv.datasets.XRayResizer(224)
+        ]
+    )
+    img = transform(img)
+    img = torch.from_numpy(img)
+
+    return img[None, ...]
+
+
+### Prediction
+
+def predict(image, model_choice):
+    """Function that serves predictions."""
+    img = xrv_prepare_image(image)
+    model = xrv.models.DenseNet(weights=model_choice)
+    model.eval()
+
+    outputs = model(img)
+    scores =  outputs[0].detach().numpy().astype(np.float) #conversion to np.float is needed for visualization with gr.Label
+    label = dict(zip(model.pathologies, scores) )
+    return label
+
+
+### Explanation
+
+def explain_gradient(image, model_choice, target):
+    """Function that serves explanations using the standard gradient-based saliency map"""
+    
+    model = xrv.models.DenseNet(weights=model_choice)
+    input = xrv_prepare_image(image)
+    
+    #Saliency
+    saliency = Saliency(model)
+    attr = saliency.attribute(input, target=model.pathologies.index(target))
+    fig1 = make_fig( np.abs(attr[0,0].numpy()) )
+
+    return fig1
+
+def explain_input_x_gradient(image, model_choice, target):
+    """Function that serves explanations using the input-times-gradient method."""
+    
+    model = xrv.models.DenseNet(weights=model_choice)
+    input = xrv_prepare_image(image)
+    
+    #InputXGradient
+    ixg = InputXGradient(model)
+    attr = ixg.attribute(input, target=model.pathologies.index(target))
+    fig2 = make_fig( np.abs(attr[0,0].detach().numpy()) ) 
+    return fig2
+    
+def explain_integrated_gradients(image, model_choice, target):
+    """Function that serves explanations using integrated gradients"""
+    
+    model = xrv.models.DenseNet(weights=model_choice)
+    input = xrv_prepare_image(image)
+    
+    #IntegratedGradients
+    ig = IntegratedGradients(model)
+    attr = ig.attribute(input, target=model.pathologies.index(target))
+    fig3 = make_fig( np.abs(attr[0,0].detach().numpy()) )
+    return fig3
+
+def explain_gifsplanation(image, model_choice, target):
+    """Function that serves explanations using gifsplanation"""
+    
+    model = xrv.models.DenseNet(weights=model_choice)
+    input = xrv_prepare_image(image)
+    
+    #Gifsplanation
+    input.requires_grad=False
+    ae = xrv.autoencoders.ResNetAE(weights="101-elastic")
+
+    pth = os.getcwd()
+
+    movie = attribution.generate_video(input, model, target, ae,temp_path=pth+"\\tmp", target_filename="test", border=False, show=False,
+                        ffmpeg_path="ffmpeg")
+
+    return movie
