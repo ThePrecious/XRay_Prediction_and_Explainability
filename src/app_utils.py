@@ -105,7 +105,7 @@ def explain_gifsplanation(image, model_choice, target):
 
     pth = os.getcwd()
 
-    movie = attribution.generate_video(input, model, target, ae,temp_path=pth+"\\tmp", target_filename="test", border=False, show=False,
+    movie = attribution.generate_video(input, model, target, ae,temp_path=pth+"/tmp", target_filename="test", border=False, show=False,
                         ffmpeg_path="ffmpeg")
 
     return movie
