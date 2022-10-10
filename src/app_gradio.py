@@ -32,6 +32,8 @@ def make_frontend():
                     'Fibrosis','Effusion','Pneumonia','Pleural_Thickening','Cardiomegaly','Nodule','Mass',
                     'Hernia','Lung Lesion','Fracture','Lung Opacity','Enlarged Cardiomediastinum']
 
+    headers = ['Pathology', 'Score','Diagnosis']
+
     examples_dir = Path("src") / "examples"
     example_fnames = [elem for elem in os.listdir(examples_dir) if elem.endswith(".png")]
     example_paths = [examples_dir / fname for fname in example_fnames]
@@ -52,19 +54,19 @@ def make_frontend():
         with gr.Tab("Prediction"):
             with gr.Row():
                 with gr.Column():
-                    input_image = gr.Image(label="X-ray image")
-                    select_model = gr.Dropdown(label="Select model", choices=model_choices)
-                    with gr.Row():
-                        submit_button = gr.Button("Submit")
-                    gr.Examples(examples, inputs=input_image)
-
+                    with gr.Tab("Input"):
+                        input_image = gr.Image(label="X-ray image")
+                        select_model = gr.Dropdown(label="Select model", choices=model_choices)
+                        with gr.Row():
+                            submit_button = gr.Button("Submit")
+                        gr.Examples(examples, inputs=input_image)
                 with gr.Column():
-                    label = gr.Label(label="Multiclass predictions")
+                    with gr.Tab("Report"):
+                        report = gr.Dataframe(headers=headers)
 
-        submit_button.click(predict, [input_image, select_model], label) 
+        submit_button.click(predict, [input_image, select_model], report) 
 
         with gr.Tab("Explanation"):
-
             with gr.Row():
                 with gr.Column():
                     select_target = gr.Dropdown(label="Select target", choices=target_choices)

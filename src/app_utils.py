@@ -5,6 +5,7 @@ import torchvision
 import matplotlib.pyplot as plt
 plt.switch_backend('agg')
 import numpy as np
+import pandas as pd
 
 from captum.attr import IntegratedGradients, Saliency, InputXGradient
 from .gifsplanation import attribution
@@ -44,11 +45,13 @@ def predict(image, model_choice):
     img = xrv_prepare_image(image)
     model = xrv.models.DenseNet(weights=model_choice)
     model.eval()
-
     outputs = model(img)
     scores =  outputs[0].detach().numpy().astype(np.float) #conversion to np.float is needed for visualization with gr.Label
-    label = dict(zip(model.pathologies, scores) )
-    return label
+    diagnosis = ['Yes' if scores[i] > 0.5 else 'No' for i in range(len(model.pathologies))] 
+    result = [a for a in zip(model.pathologies, scores, diagnosis) if a[0] != ""] #remove empty pathologies
+    d = {'Pathology': [a[0] for a in result], 'Score': [a[1] for a in result], 'Diagnosis': [a[2] for a in result]}
+    df = pd.DataFrame(data=d).round(4)
+    return df
 
 
 ### Explanation
