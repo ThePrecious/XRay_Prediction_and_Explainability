@@ -46,8 +46,8 @@ def make_frontend():
     with frontend:
         gr.Markdown(
             """
-            # X-Ray Diagnosis
-            Explore TorchXRayVision model predictions and data using this demo.
+            # X-Ray Diagnosis AI Assistant
+            Human-in-the-loop interface for exploring TorchXRayVision models and data.
             """
             )
         #layout
