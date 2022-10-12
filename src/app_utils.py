@@ -9,6 +9,25 @@ import pandas as pd
 
 from captum.attr import IntegratedGradients, Saliency, InputXGradient
 from .gifsplanation import attribution
+from en_model import ChestXrayEnsemble
+
+n_classes = 14
+base_learner_names = [  'densenet121-res224-all',
+                        'resnet50-res512-all',
+                        'densenet121-res224-pc',
+                        'densenet121-res224-rsna',
+                        'densenet121-res224-chex',
+                        'densenet121-res224-mimic_ch',
+                        'densenet121-res224-mimic_nb',
+                        'densenet121-res224-nih'
+                     ]
+
+chk_path = './model/epoch=00.ckpt'
+checkpoint = torch.load(chk_path, map_location='cpu')
+
+model_ensemble = ChestXrayEnsemble(num_classes=n_classes,base_learners=base_learner_names)
+model_ensemble.load_state_dict(checkpoint['state_dict'])
+model_ensemble.eval()
 
 def make_fig(plot_matrix):
     fig = plt.figure()
@@ -40,17 +59,31 @@ def xrv_prepare_image(image):
 
 ### Prediction
 
+def predict_ensemble(image):
+    pathologies = model_ensemble.base_learners[7].pathologies
+    thresholds = [0.17, 0.87, 0.23, 0.96, 0.52, 0.99, 0.93, 0.28, 0.77, 0.13, 0.98, 0.16, 0.13, 0.08]
+    scores = model_ensemble(image).detach().to('cpu').numpy()[0]
+    scores = np.round(scores,4)
+    diagnosis = ['Yes' if scores[i] > thresholds[i] else 'No' for i in range(n_classes)]
+    result = [a for a in zip(pathologies, scores, diagnosis) if a[0] != ""]
+    d = {'Pathology': [a[0] for a in result], 'Score': [a[1] for a in result], 'Diagnosis': [a[2] for a in result]}
+    df = pd.DataFrame(data=d).round(4)
+    return df
+
 def predict(image, model_choice):
     """Function that serves predictions."""
     img = xrv_prepare_image(image)
-    model = xrv.models.DenseNet(weights=model_choice)
-    model.eval()
-    outputs = model(img)
-    scores =  outputs[0].detach().numpy().astype(np.float) #conversion to np.float is needed for visualization with gr.Label
-    diagnosis = ['Yes' if scores[i] > 0.5 else 'No' for i in range(len(model.pathologies))] 
-    result = [a for a in zip(model.pathologies, scores, diagnosis) if a[0] != ""] #remove empty pathologies
-    d = {'Pathology': [a[0] for a in result], 'Score': [a[1] for a in result], 'Diagnosis': [a[2] for a in result]}
-    df = pd.DataFrame(data=d).round(4)
+    if model_choice == 'torchxrayvision-ensemble':
+        df = predict_ensemble(img)
+    else:
+        model = xrv.models.DenseNet(weights=model_choice)
+        model.eval()
+        outputs = model(img)
+        scores =  outputs[0].detach().numpy().astype(np.float) #conversion to np.float is needed for visualization with gr.Label
+        diagnosis = ['Yes' if scores[i] > 0.5 else 'No' for i in range(len(model.pathologies))]
+        result = [a for a in zip(model.pathologies, scores, diagnosis) if a[0] != ""] #remove empty pathologies
+        d = {'Pathology': [a[0] for a in result], 'Score': [a[1] for a in result], 'Diagnosis': [a[2] for a in result]}
+        df = pd.DataFrame(data=d).round(4)
     return df
 
 
