@@ -1,4 +1,4 @@
-# XRay_Prediction_and_Explainability
+# X-Ray Diagnosis AI Assistant
 Repository containing FSDL project
 
 ## Proposal
