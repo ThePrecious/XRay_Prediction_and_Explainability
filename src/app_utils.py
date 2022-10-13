@@ -9,7 +9,7 @@ import pandas as pd
 
 from captum.attr import IntegratedGradients, Saliency, InputXGradient
 from .gifsplanation import attribution
-from en_model import ChestXrayEnsemble
+from .en_model import ChestXrayEnsemble
 
 n_classes = 14
 base_learner_names = [  'densenet121-res224-all',
@@ -22,11 +22,12 @@ base_learner_names = [  'densenet121-res224-all',
                         'densenet121-res224-nih'
                      ]
 
-chk_path = './model/epoch=00.ckpt'
+chk_path = './src/model/epoch=00.ckpt'
 checkpoint = torch.load(chk_path, map_location='cpu')
 
 model_ensemble = ChestXrayEnsemble(num_classes=n_classes,base_learners=base_learner_names)
 model_ensemble.load_state_dict(checkpoint['state_dict'])
+model_ensemble.pathologies = model_ensemble.base_learners[7].pathologies
 model_ensemble.eval()
 
 def make_fig(plot_matrix):
@@ -44,7 +45,10 @@ def make_fig(plot_matrix):
 
 def xrv_prepare_image(image):
     img = xrv.datasets.normalize(image, 255)  # convert 8-bit image to [-1024, 1024] range
-    img = img.mean(2)[None, ...]  # Make single color channel
+    if img.ndim > 2:
+      img = img.mean(2)[None, ...]  # Make single color channel
+    else:
+      img = img[None, ...]
     transform = torchvision.transforms.Compose(
         [
             xrv.datasets.XRayCenterCrop(),
@@ -60,12 +64,12 @@ def xrv_prepare_image(image):
 ### Prediction
 
 def predict_ensemble(image):
-    pathologies = model_ensemble.base_learners[7].pathologies
+    #pathologies = model_ensemble.base_learners[7].pathologies
     thresholds = [0.17, 0.87, 0.23, 0.96, 0.52, 0.99, 0.93, 0.28, 0.77, 0.13, 0.98, 0.16, 0.13, 0.08]
     scores = model_ensemble(image).detach().to('cpu').numpy()[0]
     scores = np.round(scores,4)
     diagnosis = ['Yes' if scores[i] > thresholds[i] else 'No' for i in range(n_classes)]
-    result = [a for a in zip(pathologies, scores, diagnosis) if a[0] != ""]
+    result = [a for a in zip(model_ensemble.pathologies, scores, diagnosis) if a[0] != ""]
     d = {'Pathology': [a[0] for a in result], 'Score': [a[1] for a in result], 'Diagnosis': [a[2] for a in result]}
     df = pd.DataFrame(data=d).round(4)
     return df
@@ -91,8 +95,10 @@ def predict(image, model_choice):
 
 def explain_gradient(image, model_choice, target):
     """Function that serves explanations using the standard gradient-based saliency map"""
-    
-    model = xrv.models.DenseNet(weights=model_choice)
+    if model_choice == 'torchxrayvision-ensemble':
+      model = model_ensemble
+    else:
+      model = xrv.models.DenseNet(weights=model_choice)
     input = xrv_prepare_image(image)
     
     #Saliency
@@ -105,7 +111,10 @@ def explain_gradient(image, model_choice, target):
 def explain_input_x_gradient(image, model_choice, target):
     """Function that serves explanations using the input-times-gradient method."""
     
-    model = xrv.models.DenseNet(weights=model_choice)
+    if model_choice == 'torchxrayvision-ensemble':
+      model = model_ensemble
+    else:
+      model = xrv.models.DenseNet(weights=model_choice)
     input = xrv_prepare_image(image)
     
     #InputXGradient
@@ -117,7 +126,10 @@ def explain_input_x_gradient(image, model_choice, target):
 def explain_integrated_gradients(image, model_choice, target):
     """Function that serves explanations using integrated gradients"""
     
-    model = xrv.models.DenseNet(weights=model_choice)
+    if model_choice == 'torchxrayvision-ensemble':
+      model = model_ensemble
+    else:
+      model = xrv.models.DenseNet(weights=model_choice)
     input = xrv_prepare_image(image)
     
     #IntegratedGradients
@@ -129,7 +141,10 @@ def explain_integrated_gradients(image, model_choice, target):
 def explain_gifsplanation(image, model_choice, target):
     """Function that serves explanations using gifsplanation"""
     
-    model = xrv.models.DenseNet(weights=model_choice)
+    if model_choice == 'torchxrayvision-ensemble':
+      model = model_ensemble
+    else:
+      model = xrv.models.DenseNet(weights=model_choice)
     input = xrv_prepare_image(image)
     
     #Gifsplanation
