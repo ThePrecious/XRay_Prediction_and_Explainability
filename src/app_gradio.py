@@ -27,8 +27,7 @@ def make_frontend():
     """Creates a gradio.Interface frontend for an image to text function."""
 
     #model_choices = ["densenet121-res224-all", "densenet121-res224-rsna","densenet121-res224-nih","densenet121-res224-pc","densenet121-res224-chex","densenet121-res224-mimic_nb","densenet121-res224-mimic_ch"]
-    model_choices = [   "all",
-                        "densenet121-res224-all",
+    model_choices = [   "densenet121-res224-all",
                         "densenet121-res224-rsna",
                         "densenet121-res224-nih",
                         "densenet121-res224-pc",
