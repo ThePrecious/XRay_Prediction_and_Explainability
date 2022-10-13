@@ -1,10 +1,9 @@
-import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchxrayvision as xrv
 
-class ChestXrayEnsemble(pl.LightningModule):
+class ChestXrayEnsemble(nn.Module):
     def __init__(self,num_classes,base_learners):
         super(ChestXrayEnsemble,self).__init__()
 
