@@ -19,3 +19,6 @@ Installation:
 Run setup.py and then demo.py.
 
 This requires a working version of  ffmpeg that can be used via command-line.
+
+Demo recording link:
+https://youtu.be/UyuGoUuO9C8?list=PL1T8fO7ArWle-HwX6SkoQ3j_ol19P7tGT
